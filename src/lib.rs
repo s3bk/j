@@ -102,6 +102,7 @@ impl JBot {
             },
             "clear" => {
                 self.context = EvalContext::new();
+                Response::Empty
             },
             _ => match self.context.run(msg) {
                 Ok(Some(s)) => Response::Message(s),
