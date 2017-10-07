@@ -99,7 +99,10 @@ impl JBot {
                 } else {
                     Response::Info("usage: dict TERM".into())
                 }
-            }
+            },
+            "clear" => {
+                self.context = EvalContext::new();
+            },
             _ => match self.context.run(msg) {
                 Ok(Some(s)) => Response::Message(s),
                 Ok(None) => Response::Empty,
