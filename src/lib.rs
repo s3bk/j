@@ -147,7 +147,7 @@ impl JBot {
                 let user = msg.source_nickname().unwrap();
                 let n = self.memos.has_memos(user); 
                 if n > 0 {
-                    irc.send_notice(channel, &format!("Welcome back {}, you have {} memos. type `/msg j memo read` to read.", user, n)).unwrap();
+                    irc.send_privmsg(user, &format!("Welcome back {}, you have {} memos. type `/msg j memo read` to read.", user, n)).unwrap();
                 }
             },
             Command::Response(IrcResponse::ERR_NICKNAMEINUSE, _, _) => {
