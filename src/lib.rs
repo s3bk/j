@@ -16,6 +16,7 @@ extern crate bullet;
 extern crate bincode;
 extern crate chrono;
 
+use std::time::Duration;
 use irc::client::prelude::*;
 use irc::error::Error as IrcError;
 use futures::{future, Future, Stream};
@@ -143,10 +144,9 @@ impl JBot {
                 }
             },
             Command::PING(ref msg, _) => self.server.send_pong(msg).unwrap(),
-            Command::JOIN(ref channel, _, _) => {
+            Command::JOIN(_, _, _) => {
                 let user = msg.source_nickname().unwrap();
-                let n = self.memos.has_memos(user); 
-                if n > 0 {
+                if let Some(n) = self.memos.has_memos(user, Duration::from_secs(300)) {
                     irc.send_privmsg(user, &format!("Welcome back {}, you have {} memos. type `/msg j memo read` to read.", user, n)).unwrap();
                 }
             },
