@@ -17,6 +17,7 @@ extern crate bincode;
 extern crate chrono;
 extern crate unicode_segmentation;
 
+use std::time::Duration;
 use irc::client::prelude::*;
 use irc::error::Error as IrcError;
 use futures::{future, Future, Stream};
@@ -100,7 +101,11 @@ impl JBot {
                 } else {
                     Response::Info("usage: dict TERM".into())
                 }
-            }
+            },
+            "clear" => {
+                self.context = EvalContext::new();
+                Response::Empty
+            },
             _ => match self.context.run(msg) {
                 Ok(Some(s)) => Response::Message(s),
                 Ok(None) => Response::Empty,
@@ -141,11 +146,10 @@ impl JBot {
                 }
             },
             Command::PING(ref msg, _) => self.server.send_pong(msg).unwrap(),
-            Command::JOIN(ref channel, _, _) => {
+            Command::JOIN(_, _, _) => {
                 let user = msg.source_nickname().unwrap();
-                let n = self.memos.has_memos(user); 
-                if n > 0 {
-                    irc.send_notice(channel, &format!("Welcome back {}, you have {} memos. type `/msg j memo read` to read.", user, n)).unwrap();
+                if let Some(n) = self.memos.has_memos(user, Duration::from_secs(300)) {
+                    irc.send_privmsg(user, &format!("Welcome back {}, you have {} memos. type `/msg j memo read` to read.", user, n)).unwrap();
                 }
             },
             Command::Response(IrcResponse::ERR_NICKNAMEINUSE, _, _) => {
