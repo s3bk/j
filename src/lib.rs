@@ -15,6 +15,7 @@ extern crate url;
 extern crate bullet;
 extern crate bincode;
 extern crate chrono;
+extern crate unicode_segmentation;
 
 use irc::client::prelude::*;
 use irc::error::Error as IrcError;
@@ -135,7 +136,8 @@ impl JBot {
                         Response::Empty => {}
                     }
                 } else {
-                    self.words.seen(body.split(' ') );
+                    use unicode_segmentation::UnicodeSegmentation;
+                    self.words.seen(body.unicode_words());
                 }
             },
             Command::PING(ref msg, _) => self.server.send_pong(msg).unwrap(),

@@ -18,7 +18,8 @@ rand = "*"
 url = "*"
 env_logger = "*"
 log = "*"
-bullet = { git = "https://github.com/s3bk/bullet.git" }
+#bullet = { git = "https://github.com/s3bk/bullet.git" }
+bullet = { path="../bullet" }
 bincode = "*"
 chrono = "*"
-
+unicode-segmentation = "*"
