@@ -6,7 +6,7 @@ authors = ["Sebastian Köln <sebk@rynx.org>"]
 
 [dependencies]
 irc = { git = "https://github.com/aatxe/irc.git" }
-futures = "*"
+futures = "0.1"
 hyper = "*"
 hyper-tls = "*"
 serde_derive = "*"
