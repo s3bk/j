@@ -94,7 +94,7 @@ impl JBot {
                     Response::Info("usage: word TERM")
                 }
             },
-            "help" => Response::Info("This is J, a bot written in Rust and maintained by sebk"),
+            "help" => Response::Info("This is J, a bot written in Rust and maintained by sebk (see https://github.com/s3bk/j)"),
             "dict" => {
                 if let Some(term) = rest {
                     Response::Soon(box urbandict::term(&self.client, term))
@@ -172,7 +172,7 @@ impl JBot {
             .connector(HttpsConnector::new(4, &core.handle()).unwrap())
             .build(&core.handle());
 
-        let ctrl_c = tokio_signal::ctrl_c(&core.handle())
+        let ctrl_c = tokio_signal::ctrl_c()
             .map_err(|_| panic!());
         
         let r = core.run(
