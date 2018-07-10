@@ -165,42 +165,53 @@ impl JBot {
     }
     pub fn run(config: &str) {
         let config = Config::load(config).unwrap();
+        enum Cause {
+            CtrlC,
+            Irc(IrcError)
+        }
+            
         let mut core = Core::new().unwrap();
-        let irc = IrcServer::new_future(core.handle(), &config).unwrap();
-        
-        let client = Client::configure()
-            .connector(HttpsConnector::new(4, &core.handle()).unwrap())
-            .build(&core.handle());
+        loop {
+            let irc = IrcServer::new_future(core.handle(), &config).unwrap();
+            
+            let client = Client::builder()
+                .build(HttpsConnector::new(4).unwrap());
 
-        let ctrl_c = tokio_signal::ctrl_c()
-            .map_err(|_| panic!());
-        
-        let r = core.run(
-            irc.join(ctrl_c)
-                .and_then(|(server, ctrl_c)| {
-                    let ctrl_c = ctrl_c
-                        .map_err(|_| IrcError::from_kind("CTRL-C".into()))
-                        .then(|_| Err(IrcError::from_kind("CTRL-C".into())))
-                        .map(|()| panic!());
-                    
-                    info!("connected");
-                    server.identify().unwrap();
-                    
-                    let mut bot = JBot {
-                        prefix: format!("{}:", config.nickname()),
-                        client,
-                        server: server.clone(),
-                        context: EvalContext::new(),
-                        words: load("data/words.data"),
-                        memos: load("data/memos.data")
-                    };
+            let ctrl_c = tokio_signal::ctrl_c()
+                .map_err(|_| panic!());
+            
+            let r = core.run(
+                irc.map_err(|e| Cause::Irc(e))
+                    .join(ctrl_c)
+                    .and_then(|(server, ctrl_c)| {
+                        let ctrl_c = ctrl_c
+                            .map_err(|_| Cause::CtrlC)
+                            .then(|_| Err(Cause::CtrlC))
+                            .map(|()| panic!());
+                        
+                        info!("connected");
+                        server.identify().unwrap();
+                        
+                        let mut bot = JBot {
+                            prefix: format!("{}:", config.nickname()),
+                            client,
+                            server: server.clone(),
+                            context: EvalContext::new(),
+                            words: load("data/words.data"),
+                            memos: load("data/memos.data")
+                        };
 
-                    server.stream()
-                        .select(ctrl_c)
-                    .for_each(move |msg| bot.handle_msg(msg))
-            })
-        );
-        println!("{:?}", r);
+                        server.stream().map_err(|e| Cause::Irc(e))
+                            .select(ctrl_c)
+                        .for_each(move |msg| bot.handle_msg(msg).map_err(|e| Cause::Irc(e)))
+                })
+            );
+            match r {
+                Ok(_) => continue,
+                Err(Cause::CtrlC) => break,
+                Err(Cause::Irc(_)) => continue
+            }
+        }
     }
 }
 impl Drop for JBot {
