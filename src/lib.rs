@@ -94,7 +94,7 @@ impl JBot {
                     Response::Info("usage: word TERM")
                 }
             },
-            "help" => Response::Info("This is J, a bot written in Rust and maintained by sebk (see https://github.com/s3bk/j)"),
+            "help" => Response::Info("This is J, a bot written in Rust and maintained by sebk (see https://gitlab.com/sebk/j)"),
             "dict" => {
                 if let Some(term) = rest {
                     Response::Soon(box urbandict::term(&self.client, term))
