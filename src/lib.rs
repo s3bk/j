@@ -146,10 +146,12 @@ impl JBot {
                 }
             },
             Command::PING(ref msg, _) => self.server.send_pong(msg).unwrap(),
-            Command::JOIN(_, _, _) => {
+            Command::JOIN(ref channel, _, _) => {
                 let user = msg.source_nickname().unwrap();
                 if let Some(n) = self.memos.has_memos(user, Duration::from_secs(300)) {
-                    irc.send_privmsg(user, &format!("Welcome back {}, you have {} memos. type `/msg j memo read` to read.", user, n)).unwrap();
+                    let msg = format!("Welcome back {}, you have {} memos. type `/msg j memo read` to read.", user, n);
+                    irc.send_privmsg(user, &msg).unwrap();
+                    irc.send_notice(channel, &msg).unwrap();
                 }
             },
             Command::Response(IrcResponse::ERR_NICKNAMEINUSE, _, _) => {
