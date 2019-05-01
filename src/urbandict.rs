@@ -44,8 +44,13 @@ pub fn term<C: Connect + 'static>(client: &Client<C>, term: &str) -> Box<Future<
                 Some(d) => {
                     let text = d.definition.lines().next().unwrap();
                     let cap = MAX_LEN - term.len();
-                    if text.len() > cap {
-                        let end = text[.. cap].rfind(" ").unwrap_or(cap);
+                    let end = text.char_indices()
+                        .map(|(i, _)| i)
+                        .filter(|&i| i <= cap)
+                        .last();
+
+                    if let Some(end) = end {
+                        let end = text[.. end].rfind(" ").unwrap_or(end);
                         format!("{}: {} ...", term, &text[.. end])
                     } else {
                         format!("{}: {}", term, text)
