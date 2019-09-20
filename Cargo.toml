@@ -2,7 +2,7 @@
 name = "j"
 version = "0.1.0"
 authors = ["Sebastian Köln <sebk@rynx.org>"]
-
+edition = "2018"
 
 [dependencies]
 irc = "0.12.5"
@@ -18,8 +18,9 @@ rand = "0.6.5"
 url = "1.7.2"
 env_logger = "0.6.1"
 log = "0.4.6"
-bullet = { git = "https://gitlab.com/sebk/bullet.git" }
+bullet = { git = "https://github.com/s3bk/bullet" }
 #bullet = { path = "../bullet" }
 bincode = "1.1.2"
 chrono = "0.4.6"
 unicode-segmentation = "1.2.1"
+markov = "1.0"

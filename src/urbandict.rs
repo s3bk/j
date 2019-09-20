@@ -19,7 +19,7 @@ const MAX_LEN: usize = 400;
 pub fn term<C: Connect + 'static>(client: &Client<C>, term: &str) -> Box<Future<Item=String, Error=String>> {
     let term = term.to_owned();
     let url = Url::parse_with_params("https://api.urbandictionary.com/v0/define", &[("term", &term)]).unwrap();
-    box client.get(url.as_str().parse().unwrap())
+    Box::new(client.get(url.as_str().parse().unwrap())
         .and_then(|res| res.into_body().concat2())
         .map(move |body| {
             let entry: Entry = serde_json::from_slice(&body).unwrap();
@@ -43,13 +43,13 @@ pub fn term<C: Connect + 'static>(client: &Client<C>, term: &str) -> Box<Future<
                 None => format!("no results for '{}'", term),
                 Some(d) => {
                     let text = d.definition.lines().next().unwrap();
-                    let cap = MAX_LEN - term.len();
-                    let end = text.char_indices()
-                        .map(|(i, _)| i)
-                        .filter(|&i| i <= cap)
-                        .last();
-
-                    if let Some(end) = end {
+                    if text.len() > MAX_LEN {
+                        let cap = MAX_LEN - term.len();
+                        let end = text.char_indices()
+                            .map(|(i, _)| i)
+                            .filter(|&i| i <= cap)
+                            .last().unwrap();
+                            
                         let end = text[.. end].rfind(" ").unwrap_or(end);
                         format!("{}: {} ...", term, &text[.. end])
                     } else {
@@ -59,4 +59,5 @@ pub fn term<C: Connect + 'static>(client: &Client<C>, term: &str) -> Box<Future<
             }
         })
         .map_err(|e| format!("something went wrong: {:?}", e))
+    )
 }

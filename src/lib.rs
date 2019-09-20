@@ -1,22 +1,5 @@
-#![feature(box_syntax)]
-
-extern crate irc;
-extern crate hyper;
-extern crate hyper_tls;
-extern crate rand;
-extern crate serde;
-#[macro_use] extern crate serde_derive;
-extern crate serde_json;
-extern crate futures;
-extern crate tokio_core;
-extern crate tokio_signal;
-extern crate url;
 #[macro_use] extern crate log;
-extern crate bullet;
-extern crate bincode;
-extern crate chrono;
-extern crate unicode_segmentation;
-
+#[macro_use] extern crate serde_derive;
 use std::time::Duration;
 use irc::client::prelude::*;
 use irc::error::Error as IrcError;
@@ -33,6 +16,7 @@ mod memo;
 use memo::*;
 mod util;
 use util::*;
+use markov::Chain;
 
 pub struct JBot {
     client: Client<HttpsConnector<HttpConnector>>,
@@ -40,7 +24,8 @@ pub struct JBot {
     prefix: String,
     context: EvalContext,
     words: Words,
-    memos: Memos
+    memos: Memos,
+    chain: Chain<String>
 }
 
 fn split(s: &str) -> (&str, Option<&str>) {
@@ -50,7 +35,7 @@ fn split(s: &str) -> (&str, Option<&str>) {
 
 enum Response {
     Info(&'static str),
-    Soon(Box<Future<Item=String, Error=String>>),
+    Soon(Box<dyn Future<Item=String, Error=String>>),
     Empty,
     Message(String),
     Error(String)
@@ -97,7 +82,7 @@ impl JBot {
             "help" => Response::Info("This is J, a bot written in Rust and maintained by sebk (see https://gitlab.com/sebk/j)"),
             "dict" => {
                 if let Some(term) = rest {
-                    Response::Soon(box urbandict::term(&self.client, term))
+                    Response::Soon(Box::new(urbandict::term(&self.client, term)))
                 } else {
                     Response::Info("usage: dict TERM".into())
                 }
@@ -106,6 +91,9 @@ impl JBot {
                 self.context = EvalContext::new();
                 Response::Empty
             },
+            "markov" => {
+                Response::Message(self.chain.generate_str())
+            }
             _ => match self.context.run(msg) {
                 Ok(Some(s)) => Response::Message(s),
                 Ok(None) => Response::Empty,
@@ -130,19 +118,20 @@ impl JBot {
                     match self.respond(&from, body[prefix_len..].trim()) {
                         Response::Error(msg) | Response::Message(msg) => irc.send_notice(&to, &msg).unwrap(),
                         Response::Info(msg) => irc.send_notice(&to, msg).unwrap(),
-                        Response::Soon(f) => return box f.or_else(|e| Ok(e)).map(move |msg| irc.send_notice(&to, &msg).unwrap()),
+                        Response::Soon(f) => return Box::new(f.or_else(|e| Ok(e)).map(move |msg| irc.send_notice(&to, &msg).unwrap())),
                         Response::Empty => {}
                     }   
                 } else if to == self.server.config().nickname() {
                     match self.respond(&from, body) {
                         Response::Error(msg) | Response::Message(msg) => irc.send_privmsg(&from, &msg).unwrap(),
                         Response::Info(msg) => irc.send_privmsg(&from, msg).unwrap(),
-                        Response::Soon(f) => return box f.or_else(|e| Ok(e)).map(move |msg| irc.send_privmsg(&from, &msg).unwrap()),
+                        Response::Soon(f) => return Box::new(f.or_else(|e| Ok(e)).map(move |msg| irc.send_privmsg(&from, &msg).unwrap())),
                         Response::Empty => {}
                     }
                 } else {
                     use unicode_segmentation::UnicodeSegmentation;
                     self.words.seen(body.unicode_words());
+                    self.chain.feed_str(body);
                 }
             },
             Command::PING(ref msg, _) => self.server.send_pong(msg).unwrap(),
@@ -163,7 +152,7 @@ impl JBot {
             _ => {}
         }
         
-        box future::ok(())
+        Box::new(future::ok(()))
     }
     pub fn run(config: &str) {
         let config = Config::load(config).unwrap();
@@ -200,7 +189,8 @@ impl JBot {
                             server: server.clone(),
                             context: EvalContext::new(),
                             words: load("data/words.data"),
-                            memos: load("data/memos.data")
+                            memos: load("data/memos.data"),
+                            chain: Chain::load("data/chain.data").unwrap_or(Chain::new())
                         };
 
                         server.stream().map_err(|e| Cause::Irc(e))
@@ -220,5 +210,6 @@ impl Drop for JBot {
     fn drop(&mut self) {
         save("data/words.data", &self.words);
         save("data/memos.data", &self.memos);
+        self.chain.save("data/chain.dat").unwrap();
     }
 }
