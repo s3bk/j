@@ -7,7 +7,7 @@ use futures::{future, Future, Stream};
 use tokio_core::reactor::Core;
 use hyper::Client;
 use hyper::client::HttpConnector;
-use hyper_tls::HttpsConnector;
+use hyper_rustls::HttpsConnector;
 use bullet::eval::EvalContext;
 mod urbandict;
 mod words;
@@ -166,7 +166,7 @@ impl JBot {
             let irc = IrcServer::new_future(core.handle(), &config).unwrap();
             
             let client = Client::builder()
-                .build(HttpsConnector::new(4).unwrap());
+                .build(HttpsConnector::new(4));
 
             let ctrl_c = tokio_signal::ctrl_c()
                 .map_err(|_| panic!());
